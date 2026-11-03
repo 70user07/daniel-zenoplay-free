@@ -1,32 +1,47 @@
 const { addonBuilder, serveHTTP } = require("stremio-addon-sdk");
-const { fetchWithBypass } = require("./zenoplay");
+const axios = require("axios");
+const cheerio = require("cheerio");
 
-const manifest = {
+const SCRAPER_API_KEY = "YOUR_SCRAPERAPI_KEY";
+const BASE_URL = "https://zenoplay.to/genre/bg-audio/";
+
+const builder = new addonBuilder({
     id: "org.daniel.zenoplay",
     version: "1.0.0",
     name: "Daniel-zenoplay",
-    description: "BG Audio Movies with CF Bypass",
-    types: ["movie"],
     catalogs: [{ type: "movie", id: "bg-audio", name: "BG Audio" }],
-    resources: ["catalog", "meta"]
-};
-
-const builder = new addonBuilder(manifest);
+    resources: ["catalog", "stream"],
+    types: ["movie"]
+});
 
 builder.defineCatalogHandler(async (args) => {
-    const $ = await fetchWithBypass("https://zenoplay.to/genre/bg-audio/");
-    if (!$) return { metas: [] };
-
+    const targetUrl = http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(BASE_URL)};
+    const { data } = await axios.get(targetUrl);
+    const $ = cheerio.load(data);
     const metas = [];
-    $('.movie-item').each((i, el) => {
+
+    $('.ml-item').each((i, el) => {
         metas.push({
-            id: $(el).find('a').attr('href'),
-            name: $(el).find('.title').text(),
-            type: 'movie',
-            poster: $(el).find('img').attr('src')
+            id: "zeno_" + $(el).find('a').attr('href').split('/').pop(),
+            name: $(el).find('.mli-info h2').text().trim(),
+            poster: $(el).find('.mli-thumb img').attr('data-original'),
+            type: 'movie'
         });
     });
+
     return { metas };
 });
 
-serveHTTP(builder.getInterface(), { port: 7000 });
+builder.defineStreamHandler(async (args) => {
+    const id = args.id.replace("zeno_", "");
+    const targetUrl = http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent("https://zenoplay.to/" + id)};
+    const { data } = await axios.get(targetUrl);
+    const $ = cheerio.load(data);
+    
+    // Extracting the iframe source for the player
+    const streamUrl = $('iframe#iframe-embed').attr('src');
+    
+    return { streams: [{ title: "BG Audio", url: streamUrl }] };
+});
+
+serveHTTP(builder.getInterface(), { port: process.env.PORT || 7000 });
