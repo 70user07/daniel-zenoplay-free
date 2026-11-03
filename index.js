@@ -1,64 +1,32 @@
-const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
-const zeno = require('./zenoplay');
+const { addonBuilder, serveHTTP } = require("stremio-addon-sdk");
+const { fetchWithBypass } = require("./zenoplay");
 
 const manifest = {
-  id: 'org.daniel.zenoplay',
-  version: '1.0.0',
-  name: 'Daniel-zenoplay',
-  description: 'Всички филми от zenoplay.to – само с BG Player.',
-  logo: 'https://zenoplay.to/wp-content/themes/zenoplay/assets/favicon/favicon-96x96.png',
-  resources: ['catalog', 'meta', 'stream'],
-  types: ['movie'],
-  idPrefixes: ['zeno:'],
-  catalogs: [
-    {
-      type: 'movie',
-      id: 'zenoplay-movies',
-      name: 'Daniel-zenoplay – Филми',
-      extra: [
-        { name: 'search', isRequired: false },
-        { name: 'genre', isRequired: false, options: Object.keys(zeno.GENRES) },
-        { name: 'skip', isRequired: false },
-      ],
-    },
-    {
-      type: 'movie',
-      id: 'zenoplay-bg-audio',
-      name: 'Daniel-zenoplay – БГ Аудио',
-      extra: [{ name: 'skip', isRequired: false }],
-    },
-  ],
+    id: "org.daniel.zenoplay",
+    version: "1.0.0",
+    name: "Daniel-zenoplay",
+    description: "BG Audio Movies with CF Bypass",
+    types: ["movie"],
+    catalogs: [{ type: "movie", id: "bg-audio", name: "BG Audio" }],
+    resources: ["catalog", "meta"]
 };
 
 const builder = new addonBuilder(manifest);
 
-builder.defineCatalogHandler(async ({ id, extra }) => {
-  try {
-    return { metas: await zeno.catalog(id, extra || {}), cacheMaxAge: 1800 };
-  } catch (e) {
-    console.error('catalog', id, e.message);
-    return { metas: [] };
-  }
+builder.defineCatalogHandler(async (args) => {
+    const $ = await fetchWithBypass("https://zenoplay.to/genre/bg-audio/");
+    if (!$) return { metas: [] };
+
+    const metas = [];
+    $('.movie-item').each((i, el) => {
+        metas.push({
+            id: $(el).find('a').attr('href'),
+            name: $(el).find('.title').text(),
+            type: 'movie',
+            poster: $(el).find('img').attr('src')
+        });
+    });
+    return { metas };
 });
 
-builder.defineMetaHandler(async ({ id }) => {
-  try {
-    return { meta: await zeno.meta(id), cacheMaxAge: 86400 };
-  } catch (e) {
-    console.error('meta', id, e.message);
-    return { meta: null };
-  }
-});
-
-builder.defineStreamHandler(async ({ id }) => {
-  try {
-    return { streams: await zeno.streams(id), cacheMaxAge: 1800 };
-  } catch (e) {
-    console.error('stream', id, e.message);
-    return { streams: [] };
-  }
-});
-
-const port = Number(process.env.PORT) || 7000;
-serveHTTP(builder.getInterface(), { port });
-console.log(`Daniel-zenoplay: http://127.0.0.1:${port}/manifest.json`);
+serveHTTP(builder.getInterface(), { port: 7000 });
