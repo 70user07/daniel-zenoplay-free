@@ -1,0 +1,12 @@
+{
+  "name": "daniel-zenoplay",
+  "version": "1.0.0",
+  "description": "Stremio addon: всички филми от zenoplay.to, само с BG Player",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "stremio-addon-sdk": "^1.6.10"
+  }
+}
