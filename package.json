@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Stremio addon: всички филми от zenoplay.to, само с BG Player",
   "main": "index.js",
+  "axios": "^1.6.0",
+  "cheerio": "^1.0.0-rc.12"
   "scripts": {
     "start": "node index.js"
   },
